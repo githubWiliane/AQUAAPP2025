@@ -1,0 +1,170 @@
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>REACT<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { db, ref, onValue } from "../firebase/firebase";
+
+const TemperatureAirScreen = () => {
+  const [temp, setTemp] = useState(null); // État pour la température
+  const [humi, setHumi] = useState(null); // État pour l'humidité
+
+  useEffect(() => {
+    // Référence à la base Firebase
+    const dataRef = ref(db);
+
+    // Écoute des changements dans la base de données
+    const unsubscribe = onValue(dataRef, (snapshot) => {
+      const data = snapshot.val(); // Récupérer les données
+      if (data) {
+        setTemp(data.temp || 0); // Mettre à jour la température
+        setHumi(data.humi || 0); // Mettre à jour l'humidité
+      }
+    });
+
+    // Nettoyer l'écoute lors du démontage du composant
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.label}>
+        Température de l'air : {temp !== null ? `${temp} °C` : "Chargement..."}
+      </Text>
+      <Text style={styles.label}>
+        Humidité : {humi !== null ? `${humi} %` : "Chargement..."}
+      </Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+  },
+  label: {
+    fontSize: 24,
+    marginVertical: 10,
+  },
+});
+
+export default TemperatureAirScreen;
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>fIREBAS.js/tsx<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref,onValue } from "firebase/database";
+import "firebase/database";
+ 
+
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyAVZNc6iwoI852OjMPuxnLttZhfJmqdljM",
+    authDomain: "esp32reactnative.firebaseapp.com",
+    projectId: "esp32reactnative",
+    storageBucket: "esp32reactnative.firebasestorage.app",
+    messagingSenderId: "659993136207",
+    appId: "1:659993136207:web:e4060bf044cd56a5482e3a"
+  };
+  
+
+  // Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase()
+
+export {db, ref, onValue}
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>ESP32<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+#include "DHT.h" // Bibliothèque pour le capteur DHT
+
+// Configuration Firebase
+#define FIREBASE_HOST "https://esp32reactnative-default-rtdb.firebaseio.com/"
+#define FIREBASE_AUTH "AIzaSyAVZNc6iwoI852OjMPuxnLttZhfJmqdljM"
+
+// Configuration Wi-Fi
+#define WIFI_SSID "Wifi_ESP32"
+#define WIFI_PASSWORD "12345678"
+
+// Configuration DHT11
+#define DHTPIN 4         // Pin connecté au capteur DHT11
+#define DHTTYPE DHT11    // Type de capteur (DHT11)
+
+// Initialisation du capteur DHT
+DHT dht(DHTPIN, DHTTYPE);
+
+// Initialisation Firebase
+WiFiClient wifiClient;
+FirebaseData firebaseData;
+
+// Fonction pour connecter l'ESP32 au Wi-Fi
+void connectToWiFi()
+{
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connexion au Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println("\nConnecté au Wi-Fi");
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  // Connecter au réseau Wi-Fi
+  connectToWiFi();
+
+  // Initialiser Firebase
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+
+  // Initialiser le capteur DHT
+  dht.begin();
+  Serial.println("Capteur DHT11 initialisé.");
+}
+
+void loop()
+{
+  // Lire la température et l'humidité
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  // Vérifier si les données sont valides
+  if (isnan(temperature) || isnan(humidity))
+  {
+    Serial.println("Erreur de lecture du capteur DHT11 !");
+    delay(2000);
+    return;
+  }
+
+  // Afficher les données dans la console
+  Serial.print("Température : ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+  Serial.print("Humidité : ");
+  Serial.print(humidity);
+  Serial.println(" %");
+
+  // Envoyer les données à Firebase si disponible
+  if (Firebase.ready())
+  {
+    // Structure des données dans Firebase
+    Firebase.setFloat(firebaseData, "/data/temp", temperature);
+    Firebase.setFloat(firebaseData, "/data/humi", humidity);
+    Serial.println("Données envoyées à Firebase !");
+  }
+  else
+  {
+    Serial.println("Firebase non prêt !");
+  }
+
+  // Délai de 5 secondes avant la prochaine lecture
+  delay(5000);
+}

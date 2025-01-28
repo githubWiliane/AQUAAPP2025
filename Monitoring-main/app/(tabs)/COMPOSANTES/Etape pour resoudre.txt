@@ -1,0 +1,26 @@
+Supprimez le dossier node_modules et le fichier package-lock.json
+>> rm -rf node_modules package-lock.json
+
+Réinstallez toutes les dépendances
+>> npm install
+
+Effacez le cache de npm :
+>> npm cache clean --force
+
+Mettez à jour Expo CLI globalement :
+>> npm install -g expo-cli
+
+
+Supprimez les caches d'Expo 
+>> expo start --clear
+
+
+Supprimez spécifiquement le module problématique :
+>> npm uninstall http-parser-js
+
+Réinstallez-le 
+>> npm install http-parser-js
+
+Créez un nouveau projet Expo :
+>> expo init NewProject
+

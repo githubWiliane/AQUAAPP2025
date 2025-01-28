@@ -1,0 +1,88 @@
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+#include "DHT.h" // Bibliothèque pour le capteur DHT
+
+// Configuration Firebase
+#define FIREBASE_HOST "https://esp32reactnative-default-rtdb.firebaseio.com/"
+#define FIREBASE_AUTH "AIzaSyAVZNc6iwoI852OjMPuxnLttZhfJmqdljM"
+
+// Configuration Wi-Fi
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASSWORD "your_wifi_password"
+
+// Configuration DHT11
+#define DHTPIN 4         // Pin connecté au capteur DHT11
+#define DHTTYPE DHT11    // Type de capteur (DHT11)
+
+// Initialisation du capteur DHT
+DHT dht(DHTPIN, DHTTYPE);
+
+// Initialisation Firebase
+WiFiClient wifiClient;
+FirebaseData firebaseData;
+
+// Fonction pour connecter l'ESP32 au Wi-Fi
+void connectToWiFi()
+{
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connexion au Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println("\nConnecté au Wi-Fi");
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  // Connecter au réseau Wi-Fi
+  connectToWiFi();
+
+  // Initialiser Firebase
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+
+  // Initialiser le capteur DHT
+  dht.begin();
+  Serial.println("Capteur DHT11 initialisé.");
+}
+
+void loop()
+{
+  // Lire la température et l'humidité
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  // Vérifier si les données sont valides
+  if (isnan(temperature) || isnan(humidity))
+  {
+    Serial.println("Erreur de lecture du capteur DHT11 !");
+    delay(2000);
+    return;
+  }
+
+  // Afficher les données dans la console
+  Serial.print("Température : ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+  Serial.print("Humidité : ");
+  Serial.print(humidity);
+  Serial.println(" %");
+
+  // Envoyer les données à Firebase si disponible
+  if (Firebase.ready())
+  {
+    Firebase.setFloat(firebaseData, "/temperature", temperature);
+    Firebase.setFloat(firebaseData, "/humidity", humidity);
+    Serial.println("Données envoyées à Firebase !");
+  }
+  else
+  {
+    Serial.println("Firebase non prêt !");
+  }
+
+  // Délai de 5 secondes avant la prochaine lecture
+  delay(5000);
+}
