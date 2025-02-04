@@ -17,15 +17,22 @@ import { addHistoryRecord } from "../HistoryService/HistoryService"; // Adaptez 
 
 // Options pour les panneaux solaires
 const panelOptions = [
-  { id: "A", label: "Type A - 50W / 12Vcc / 12Vcc", power: 50, panelVoltage: 12, usageVoltage: 12 },
-  { id: "B", label: "Type B - 100W / 12Vcc / 12Vcc", power: 100, panelVoltage: 12, usageVoltage: 12 },
-  { id: "C", label: "Type C - 50W / 24Vcc / 12Vcc", power: 50, panelVoltage: 24, usageVoltage: 12 },
+  { id: "A", label: "Monocristallin - 100W / 12Vcc", power: 50, panelVoltage: 12, usageVoltage: 12 },
+  { id: "B", label: "Monocristallin - 200W / 12Vcc", power: 100, panelVoltage: 12, usageVoltage: 12 },
+  { id: "C", label: "Monocristallin - 300W / 24Vcc", power: 50, panelVoltage: 24, usageVoltage: 12 },
+  { id: "C", label: "Polycristallin - 150W / 12Vcc", power: 50, panelVoltage: 24, usageVoltage: 12 },
+  { id: "C", label: "Polycristallin - 250W / 24Vcc", power: 50, panelVoltage: 24, usageVoltage: 12 },
 ];
 
 // Options pour les batteries
 const batteryOptions = [
-  { id: "Type1", label: "Type 1 - 75Ah / 12Vcc", capacity: 75, voltage: 12 },
-  { id: "Type2", label: "Type 2 - 100Ah / 12Vcc", capacity: 100, voltage: 12 },
+  { id: "Type1", label: "AGM - 38Ah / 12Vcc", capacity: 38, voltage: 12 },
+  { id: "Type2", label: "AGM - 100Ah / 12Vcc", capacity: 100, voltage: 12 },
+  { id: "Type3", label: "AGM - 200Ah / 12Vcc", capacity: 100, voltage: 12 },
+  { id: "Type4", label: "Lithium - 100Ah / 48VVcc", capacity: 100, voltage: 12 },
+  { id: "Type5", label: "Lithium - 200Ah / 48VVcc", capacity: 100, voltage: 12 },
+   
+
 ];
 
 const SolarEnergyCalculator = () => {

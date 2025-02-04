@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Switch, // Importation du Switch
+  Switch,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AlimentationScreen({ navigation }) {
   const [nombrePoissons, setNombrePoissons] = useState('');
@@ -26,6 +27,31 @@ export default function AlimentationScreen({ navigation }) {
 
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [isDistribuer, setIsDistribuer] = useState(false); // État pour le switch "Distribuer"
+
+  // Charger l'état sauvegardé du switch "Distribuer" lors du montage du composant
+  useEffect(() => {
+    const loadDistribuerState = async () => {
+      try {
+        const storedValue = await AsyncStorage.getItem('@isDistribuer');
+        if (storedValue !== null) {
+          setIsDistribuer(JSON.parse(storedValue));
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement de l'état du switch 'Distribuer':", error);
+      }
+    };
+    loadDistribuerState();
+  }, []);
+
+  // Sauvegarder l'état du switch à chaque modification
+  const onToggleDistribuer = async (newValue) => {
+    setIsDistribuer(newValue);
+    try {
+      await AsyncStorage.setItem('@isDistribuer', JSON.stringify(newValue));
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde de l'état du switch 'Distribuer':", error);
+    }
+  };
 
   const toggleTheme = () => {
     setIsDarkTheme(!isDarkTheme);
@@ -128,7 +154,7 @@ export default function AlimentationScreen({ navigation }) {
         <Text style={themeStyles.label}>Distribuer</Text>
         <Switch
           value={isDistribuer}
-          onValueChange={setIsDistribuer}
+          onValueChange={onToggleDistribuer}
           thumbColor={isDistribuer ? "#007bff" : "#f4f3f4"}
           trackColor={{ false: "#767577", true: "#81b0ff" }}
         />
