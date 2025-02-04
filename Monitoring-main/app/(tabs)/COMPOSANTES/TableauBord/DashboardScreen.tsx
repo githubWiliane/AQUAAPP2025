@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Image, Switch, ScrollView, RefreshControl } from 'react-native';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Image, 
+  Switch, 
+  ScrollView, 
+  RefreshControl, 
+  Vibration
+} from 'react-native';
 import CircularProgress from 'react-native-circular-progress-indicator';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message'; // Import Toast
 
 export default function TableauDebord({ navigation }) {
-  const [data, setData] = useState({ temperature: null, humidity: null, tempDS18B20: null ,aeratorState : false});
+  const [data, setData] = useState({ temperature: null, humidity: null, tempDS18B20: null, aeratorState: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [connected, setConnected] = useState(false);
@@ -16,21 +27,46 @@ export default function TableauDebord({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const ESP32_IP = "http://192.168.4.1";
 
+  // Fonction pour afficher des notifications toast avec possibilité de fermeture manuelle
+  /* onst showNotification = (title, message) => {
+    Toast.show({
+      type: 'error',
+      text1: title,
+      text2: message,
+      position: 'bottom',
+      visibilityTime: 3000,
+      onPress: () => Toast.hide(), // Permet de fermer le toast en appuyant dessus
+    });
+  }; */
   const fetchData = async () => {
     try {
       const response = await axios.get(`${ESP32_IP}`);
       setData(response.data);
       setAeratorState(response.data.aeratorState);
 
-
       console.log(aeratorState);
-      
+
+      // Vérification des valeurs et affichage de notifications
+      if (response.data.temperature > 30) {
+        showNotification("Alerte Température", "Attention : Température trop élevée !");
+      }
+      if (response.data.humidity < 30) {
+        showNotification("Alerte Humidité", "Attention : Humidité trop basse !");
+      }
+      if (response.data.tempDS18B20 > 28) {
+        showNotification("Alerte Eau", "Attention : Température DS18B20 trop élevée !");
+      }
+      if (pressure > 1010) {
+        showNotification("Alerte Pression", "Attention : Pression atmosphérique trop élevée !");
+      }
+
       setLoading(false);
       setConnected(true);
     } catch (err) {
       setError("Impossible de récupérer les données.");
       setLoading(false);
       setConnected(false);
+      showNotification("Erreur", "Impossible de récupérer les données.");
     }
   };
 
@@ -41,6 +77,7 @@ export default function TableauDebord({ navigation }) {
       await axios.post(`${ESP32_IP}/toggle-aerator`, { aeratorState: newAeratorState });
     } catch (err) {
       setError("Impossible de changer l'état de l'aérateur.");
+      showNotification("Erreur", "Impossible de changer l'état de l'aérateur.");
     }
   };
 
@@ -53,7 +90,6 @@ export default function TableauDebord({ navigation }) {
   };
 
   const [pressure, setPressure] = useState(getRandomPressure());
-
   function getRandomPressure() {
     return Math.floor(Math.random() * (1020 - 1013 + 1)) + 1013;
   }
@@ -61,11 +97,10 @@ export default function TableauDebord({ navigation }) {
   useEffect(() => {
     const interval = setInterval(() => {
       setPressure(getRandomPressure());
-    }, 1000); // Change toutes les secondes
+    }, 5000); // Mise à jour toutes les 5 secondes
 
     return () => clearInterval(interval);
   }, []);
-
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -93,12 +128,12 @@ export default function TableauDebord({ navigation }) {
 
   return (
     <View style={[styles.container, themeStyles.container]}>
-      {/* Tableau de bord */}
+      {/* En-tête */}
       <View style={styles.header}>
         <Text style={themeStyles.headerText}>TABLEAU DE BORD</Text>
       </View>
 
-      {/* ScrollView avec RefreshControl pour le rafraîchissement */}
+      {/* ScrollView avec rafraîchissement */}
       <ScrollView
         contentContainerStyle={styles.grid}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -145,63 +180,36 @@ export default function TableauDebord({ navigation }) {
             valueSuffix="" 
             progressColor={progressColor} 
           />
-          <Text style={themeStyles.label}>Pression Atm(hpa)</Text>
+          <Text style={themeStyles.label}>Pression Atm (hPa)</Text>
         </View>
       </ScrollView>
 
-      {/* Affichage de l'état de l'aérateur */}
+      {/* État de l'aérateur */}
       <View style={styles.aeratorStatusContainer}>
         <Text style={themeStyles.label}>État de l'Aérateur</Text>
         <View style={styles.aeratorControl}>
           <Image
-            source={aeratorState == true ?  require('../led/led2.png') : require('../led/led1.png')}
+            source={aeratorState ? require('../led/led2.png') : require('../led/led1.png')}
             style={styles.ledImage}
           />
-          {/* <Switch
-            value={aeratorState}
-            onValueChange={toggleAerator}
-            trackColor={{ false: '#767577', true: '#81b0ff' }}
-            thumbColor={aeratorState ? '#f5dd4b' : '#f4f3f4'}
-          /> */}
         </View>
       </View>
 
       {/* Barre séparatrice */}
       <View style={[styles.iconSeparator, { backgroundColor: separatorColor }]} />
 
-      {/* Alignement des icônes */}
-      <View style={styles.iconContainer}>
-        <TouchableOpacity onPress={() => navigation.navigate('Alimentation')}>
-          <Image 
-            source={require('../AlimentationScreen/ALIMENTATION.png')} 
-            style={[styles.iconAlimentation, { tintColor: iconColor }]}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Graphiques')}>
-          <Icon name="bar-chart" size={60} color={iconColor} style={styles.iconGraphique} />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Tuto')}>
-    <Icon name="book" size={60} color={iconColor} style={styles.iconTutoriel} />
-        </TouchableOpacity>
-
-      </View>
-
-      {/* Messages */}
+      {/* Message de chargement ou d'erreur */}
       {loading && !error && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={spinnerColor} style={styles.spinner} />
           <Text style={themeStyles.loadingText}>En attente des données...</Text>
         </View>
       )}
-
       {error && (
         <View style={styles.loadingContainer}>
           <Text style={themeStyles.loadingText}>{error}</Text>
         </View>
       )}
-
       {connected && !loading && !error && (
         <View style={styles.connectionContainer}>
           <Text style={themeStyles.connectionText}>Connexion rétablie !</Text>
@@ -218,6 +226,33 @@ export default function TableauDebord({ navigation }) {
           />
         </TouchableOpacity>
       </View>
+
+      {/* Barre de navigation en bas de l'écran */}
+      <View style={[styles.bottomNavigationBar, themeStyles.bottomNavigationBar]}>
+        <TouchableOpacity onPress={() => navigation.navigate('Alimentation')}>
+          <Image 
+            source={require('../AlimentationScreen/ALIMENTATION.png')} 
+            style={[styles.iconAlimentation, { tintColor: iconColor }]}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Graphiques')}>
+          <Icon name="bar-chart" size={60} color={iconColor} style={styles.iconGraphique} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Tuto')}>
+          <Icon name="book" size={60} color={iconColor} style={styles.iconTutoriel} />
+        </TouchableOpacity>
+      
+        <TouchableOpacity onPress={() => navigation.navigate('SolarEnergyCalculator')}>
+          <Image 
+            source={require('../solar/Solar.png')} 
+            style={[styles.IconSolarEnergyCalculator, { tintColor: iconColor }]}
+          />
+        </TouchableOpacity>
+        
+      </View>
+
+      {/* Composant Toast pour afficher les notifications */}
+      <Toast />
     </View>
   );
 }
@@ -226,6 +261,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    paddingBottom: 80, // Espace pour la barre de navigation
   },
   header: {
     alignItems: 'center',
@@ -256,44 +292,36 @@ const styles = StyleSheet.create({
   iconSeparator: {
     height: 1.5,
     marginHorizontal: 20,
-    marginBottom: 2,
-    marginTop: 2,
+    marginVertical: 2,
   },
-  iconContainer: {
+  aeratorStatusContainer: {
+    alignItems: 'center',
+    marginVertical: -3,
+  },
+  ledImage: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+  },
+  aeratorControl: {
     flexDirection: 'row',
-    justifyContent: 'space-around', // Répartit uniformément les icônes avec de l'espace
-    alignItems: 'center',           // Centre les icônes verticalement
-    marginTop: 20,
-  },
-  iconGraphique: {
-    marginLeft: 20,
-    right:8,
-  },
-  iconTutoriel: {
-    width: 70,
-    height: 70,
-    //resizeMode: 'contain',
-    top:10,
-    left:20,
-  },
-  iconAlimentation: {
-    width: 70, 
-    height: 70, 
-    resizeMode: 'contain', 
-    marginRight: 20, 
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    width: '50%',
   },
   loadingContainer: {
     marginTop: 20,
     alignItems: 'center',
-    flexDirection: 'row', 
-    justifyContent: 'center', 
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   spinner: {
-    marginRight: 10, 
+    marginRight: 10,
   },
   loadingText: {
     fontSize: 18,
-    marginLeft: 10, 
+    marginLeft: 10,
   },
   connectionContainer: {
     marginTop: 20,
@@ -308,11 +336,45 @@ const styles = StyleSheet.create({
     top: 20,
     right: 20,
   },
+  // Barre de navigation en bas
+  bottomNavigationBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: '#eee',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: '#ccc',
+  },
+  iconAlimentation: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+  },
+  iconGraphique: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+  },
+  iconTutoriel: {
+    // Ajustements éventuels
+  },
+  IconSolarEnergyCalculator: {
+    width: 70,
+    height: 70,
+    resizeMode: 'contain',
+  },
+
   light: {
     container: {
       backgroundColor: '#fff',
     },
     headerText: {
+      color: '#000',
       fontSize: 30,
       fontWeight: 'bold',
     },
@@ -324,6 +386,9 @@ const styles = StyleSheet.create({
     },
     connectionText: {
       color: '#000',
+    },
+    bottomNavigationBar: {
+      backgroundColor: '#eee',
     },
   },
   dark: {
@@ -344,22 +409,8 @@ const styles = StyleSheet.create({
     connectionText: {
       color: '#00FF00',
     },
-  },
-  aeratorStatusContainer: {
-    alignItems: 'center',
-    marginVertical: -3,
-  },
-  ledImage: {
-    width: 50,
-    height: 50,
-    resizeMode: 'contain',
-    marginRight: 0,
-  },
-  aeratorControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    width: '50%'
+    bottomNavigationBar: {
+      backgroundColor: '#333',
+    },
   },
 });

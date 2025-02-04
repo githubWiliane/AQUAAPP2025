@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Switch, // Importation du Switch
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -24,6 +25,7 @@ export default function AlimentationScreen({ navigation }) {
   const [showPicker3, setShowPicker3] = useState(false);
 
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const [isDistribuer, setIsDistribuer] = useState(false); // État pour le switch "Distribuer"
 
   const toggleTheme = () => {
     setIsDarkTheme(!isDarkTheme);
@@ -31,7 +33,8 @@ export default function AlimentationScreen({ navigation }) {
 
   const calculerAlimentation = () => {
     if (nombrePoissons && poidsTotal) {
-      const quantiteAlimentation = (parseFloat(poidsTotal) / parseInt(nombrePoissons)) * 0.03;
+      const quantiteAlimentation =
+        (parseFloat(poidsTotal) / parseInt(nombrePoissons)) * 0.03;
       setResultat(`Quantité d'alimentation: ${quantiteAlimentation.toFixed(2)} kg`);
     } else {
       setResultat('Veuillez saisir les deux valeurs.');
@@ -58,7 +61,7 @@ export default function AlimentationScreen({ navigation }) {
 
       <Image
         source={require('../AlimentationScreen/ALIMENTATION.png')}
-        style={[styles.icon, { tintColor: isDarkTheme ? 'white' : 'black' }]}  
+        style={[styles.icon, { tintColor: isDarkTheme ? 'white' : 'black' }]}
         resizeMode="contain"
       />
 
@@ -87,41 +90,53 @@ export default function AlimentationScreen({ navigation }) {
       </View>
 
       <View style={styles.timeContainer}>
-        {[{ heure: heure1, setShow: setShowPicker1, show: showPicker1, setTime: setHeure1 },
+        {[
+          { heure: heure1, setShow: setShowPicker1, show: showPicker1, setTime: setHeure1 },
           { heure: heure2, setShow: setShowPicker2, show: showPicker2, setTime: setHeure2 },
-          { heure: heure3, setShow: setShowPicker3, show: showPicker3, setTime: setHeure3 }].map(
-          ({ heure, setShow, show, setTime }, index) => (
-            <View key={index} style={styles.timeRow}>
-              <Text style={themeStyles.labelHeure}>{`Heure ${index + 1} :`}</Text>
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setShow(true)}
-              >
-                <Text style={styles.buttonText}>Sélectionner</Text>
-              </TouchableOpacity>
-              <Text style={themeStyles.selectedTime}>{formatHeure(heure)}</Text>
-              {show && (
-                <DateTimePicker
-                  value={heure}
-                  mode="time"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShow(false);
-                    if (selectedDate) {
-                      setTime(selectedDate);
-                    }
-                  }}
-                />
-              )}
-            </View>
-          )
-        )}
+          { heure: heure3, setShow: setShowPicker3, show: showPicker3, setTime: setHeure3 },
+        ].map(({ heure, setShow, show, setTime }, index) => (
+          <View key={index} style={styles.timeRow}>
+            <Text style={themeStyles.labelHeure}>{`Heure ${index + 1} :`}</Text>
+            <TouchableOpacity
+              style={styles.selectButton}
+              onPress={() => setShow(true)}
+            >
+              <Text style={styles.buttonText}>Sélectionner</Text>
+            </TouchableOpacity>
+            <Text style={themeStyles.selectedTime}>{formatHeure(heure)}</Text>
+            {show && (
+              <DateTimePicker
+                value={heure}
+                mode="time"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShow(false);
+                  if (selectedDate) {
+                    setTime(selectedDate);
+                  }
+                }}
+              />
+            )}
+          </View>
+        ))}
       </View>
 
       {resultat ? <Text style={themeStyles.resultat}>{resultat}</Text> : null}
+
+      {/* Bouton switch "Distribuer" en bas, centré */}
+      <View style={styles.distribuerContainer}>
+        <Text style={themeStyles.label}>Distribuer</Text>
+        <Switch
+          value={isDistribuer}
+          onValueChange={setIsDistribuer}
+          thumbColor={isDistribuer ? "#007bff" : "#f4f3f4"}
+          trackColor={{ false: "#767577", true: "#81b0ff" }}
+        />
+      </View>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -136,7 +151,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   icon: {
-    top:30,
+    top: 30,
     width: 140,
     height: 200,
     marginBottom: 40,
@@ -144,21 +159,21 @@ const styles = StyleSheet.create({
   input: {
     height: 50,
     borderWidth: 2,
-    borderRadius: 25, // Arrondi plus prononcé
-    width: '85%', // Largeur des champs
+    borderRadius: 25,
+    width: '85%',
     paddingHorizontal: 15,
     textAlignVertical: 'center',
-    marginBottom: 15, // Espace entre les champs
+    marginBottom: 15,
   },
   calculateButton: {
     backgroundColor: '#007bff',
-    paddingHorizontal: 15 ,
-    paddingRight:130,
-    paddingLeft:140,
-    paddingVertical:15,
+    paddingHorizontal: 15,
+    paddingRight: 130,
+    paddingLeft: 140,
+    paddingVertical: 15,
     borderRadius: 30,
     alignItems: 'center',
-    width: '85%', // Même largeur que les champs de saisie
+    width: '85%',
   },
   buttonText: {
     color: 'white',
@@ -173,13 +188,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15, // Espacement entre les lignes
+    marginBottom: 15,
   },
   selectButton: {
     backgroundColor: 'gray',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 20, // Bordures plus arrondies
+    borderRadius: 20,
+  },
+  distribuerContainer: {
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   light: {
     container: {
@@ -187,6 +210,7 @@ const styles = StyleSheet.create({
     },
     label: {
       color: '#000',
+      marginRight: 10,
     },
     labelHeure: {
       color: '#000',
@@ -211,6 +235,7 @@ const styles = StyleSheet.create({
     },
     label: {
       color: '#fff',
+      marginRight: 10,
     },
     labelHeure: {
       color: '#fff',
@@ -230,4 +255,3 @@ const styles = StyleSheet.create({
     },
   },
 });
-

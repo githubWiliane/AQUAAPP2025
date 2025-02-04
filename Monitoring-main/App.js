@@ -13,6 +13,8 @@ import 'react-native-gesture-handler';
 import Chapitre4Screen from './app/(tabs)/COMPOSANTES/Chapitre4/Chapitre4Screen.js';
 import Chapitre5Screen from './app/(tabs)/COMPOSANTES/Chapitre5/Chapitre5Screen.js';
 import Chapitre6Screen from './app/(tabs)/COMPOSANTES/Chapitre6/Chapitre6Screen.js';
+import SolarEnergyCalculator from './app/(tabs)/COMPOSANTES/solar/Solar.js';
+import HistoryScreen from './app/(tabs)/COMPOSANTES/Story/Story.js';
 
 const Stack = createStackNavigator();
 
@@ -43,7 +45,7 @@ export default function App() {
           options={{ title: '' }} 
         />
 
-<Stack.Screen name="TutoScreen"     component={TutoScreen} />
+      <Stack.Screen name="TutoScreen"     component={TutoScreen} />
 
       <Stack.Screen name="Chapitre1Screen"  options={{ title: '' }} component={Chapitre1Screen} />
   
@@ -56,8 +58,12 @@ export default function App() {
       <Stack.Screen name="Chapitre5Screen"  options={{ title: '' }} component={Chapitre5Screen} />
 
       <Stack.Screen name="Chapitre6Screen"  options={{ title: '' }} component={Chapitre6Screen} />
+      
+      <Stack.Screen name="SolarEnergyCalculator"  options={{ title: '' }} component={SolarEnergyCalculator} />
+
+      <Stack.Screen name="HistoryScreen"  options={{ title: '' }} component={HistoryScreen} />
 
       </Stack.Navigator>
-    </NavigationContainer>
+    </NavigationContainer> 
   );
 }
