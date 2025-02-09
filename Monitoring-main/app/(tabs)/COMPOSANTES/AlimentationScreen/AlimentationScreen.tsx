@@ -11,6 +11,9 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker';
+
+import { KeyboardAvoidingView, Platform } from 'react-native';
 
 export default function AlimentationScreen({ navigation }) {
   const [nombrePoissons, setNombrePoissons] = useState('');
@@ -27,6 +30,10 @@ export default function AlimentationScreen({ navigation }) {
 
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [isDistribuer, setIsDistribuer] = useState(false); // État pour le switch "Distribuer"
+
+  const [typeAliment, setTypeAliment] = useState('Poudre');
+
+ 
 
   // Charger l'état sauvegardé du switch "Distribuer" lors du montage du composant
   useEffect(() => {
@@ -76,6 +83,11 @@ export default function AlimentationScreen({ navigation }) {
   const themeStyles = isDarkTheme ? styles.dark : styles.light;
 
   return (
+    <KeyboardAvoidingView
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    style={{ flex: 1 }}
+  >
+
     <View style={[styles.container, themeStyles.container]}>
       <TouchableOpacity style={styles.themeIconContainer} onPress={toggleTheme}>
         <Icon
@@ -85,11 +97,37 @@ export default function AlimentationScreen({ navigation }) {
         />
       </TouchableOpacity>
 
+
+
       <Image
         source={require('../AlimentationScreen/ALIMENTATION.png')}
         style={[styles.icon, { tintColor: isDarkTheme ? 'white' : 'black' }]}
         resizeMode="contain"
       />
+
+<KeyboardAvoidingView 
+  behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+  style={{ flex: 1, bottom:20, }}
+>
+   
+  <Picker
+    selectedValue={typeAliment}
+    onValueChange={(itemValue) => setTypeAliment(itemValue)}
+    style={styles.picker}
+  >
+    <Picker.Item label="Poudre" value="Poudre" />
+    <Picker.Item label="Granuler" value="Granuler" />
+  </Picker>
+  <Text style={[styles.selectedAliment, { color: isDarkTheme ? 'white' : 'black' }]}>
+  Type d'aliment sélectionné :{' '}
+  <Text style={{ color: isDarkTheme ? '#9acd32' : 'green', fontWeight: 'bold' }}>
+    {typeAliment}
+  </Text>
+</Text>
+
+</KeyboardAvoidingView>
+
+
 
       <Text style={themeStyles.label}>Nombre total :</Text>
       <TextInput
@@ -160,6 +198,8 @@ export default function AlimentationScreen({ navigation }) {
         />
       </View>
     </View>
+    
+    </KeyboardAvoidingView>
   );
 }
 
@@ -177,10 +217,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   icon: {
-    top: 30,
-    width: 140,
-    height: 200,
-    marginBottom: 40,
+    top: 10,
+  width: 100, // Réduire la largeur
+  height: 150, // Réduire la hauteur
+  marginBottom: 10,
+     
   },
   input: {
     height: 50,
@@ -254,7 +295,35 @@ const styles = StyleSheet.create({
       color: '#000',
       borderColor: '#ccc',
     },
+    TypeAliment:{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingBottom: 50,
+    },
+    picker: {
+      height: 50,
+      width: '85%',
+      marginBottom: 15,
+      color: '#000', // Vous pouvez définir la couleur du texte si nécessaire
+      backgroundColor: '#f0f0f0', // Couleur de fond souhaitée
+      borderRadius: 10, // Facultatif, pour arrondir les coins
+      borderWidth: 1, // Facultatif, pour une bordure
+      borderColor: '#ccc', // Facultatif, pour la couleur de la bordure
+      
+    },
+
+    selectedAliment: {
+      fontSize: 16,
+      color: '#007bff', // Vous pouvez changer la couleur si nécessaire
+      marginTop: 10,
+    }
+    
+
   },
+
+
+
   dark: {
     container: {
       backgroundColor: '#121212',
@@ -278,6 +347,22 @@ const styles = StyleSheet.create({
       backgroundColor: '#333',
       color: '#fff',
       borderColor: '#fff',
+    },
+    TypeAliment:{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingBottom: 50,
+    },
+    picker: {
+      height: 50,
+      width: '85%',
+      marginBottom: 15,
+      color: '#000', // Vous pouvez définir la couleur du texte si nécessaire
+      backgroundColor: '#f0f0f0', // Couleur de fond souhaitée
+      borderRadius: 10, // Facultatif, pour arrondir les coins
+      borderWidth: 1, // Facultatif, pour une bordure
+      borderColor: '#ccc', // Facultatif, pour la couleur de la bordure
     },
   },
 });

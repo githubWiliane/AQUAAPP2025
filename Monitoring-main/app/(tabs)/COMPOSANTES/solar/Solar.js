@@ -29,6 +29,7 @@ const panelOptions = [
 // Options pour les batteries
 const batteryOptions = [
   { id: "Type1", label: "AGM  - 38Ah / 12Vcc", capacity: 38, voltage: 12 },
+  { id: "Type2", label: "AGM  - 50Ah / 12Vcc", capacity: 50, voltage: 12 },
   { id: "Type3", label: "AGM  - 75Ah / 12Vcc", capacity: 75, voltage: 12 },
   { id: "Type4", label: "AGM  - 100Ah / 12Vcc", capacity: 100, voltage: 12 },
   { id: "Type5", label: "AGM  - 200Ah / 12Vcc", capacity: 200, voltage: 12 },
@@ -94,7 +95,7 @@ const SolarEnergyCalculator = () => {
   const numPanels = Math.ceil(totalEnergyWithLosses / dailyEnergyPerPanel);
 
   // Calcul de la capacité totale de batterie requise en Ah sur l'autonomie choisie
-  const batteryCapacityTotal = (totalEnergyForAutonomy) / selectedBattery.voltage;
+  const batteryCapacityTotal = totalEnergyForAutonomy / selectedBattery.voltage;
   const numBatteries = Math.ceil(batteryCapacityTotal / selectedBattery.capacity);
 
   // Calcul de la capacité du régulateur (ampères)
@@ -147,12 +148,13 @@ const SolarEnergyCalculator = () => {
     };
     addHistoryRecord(record);
 
-    // Réinitialisation des champs et de la liste des appareils
+    // Réinitialisation des champs, de la liste des appareils ET de l'autonomie
     setDevices([]);
     setDeviceName("");
     setPower("");
     setQuantity("");
     setHours("");
+    setAutonomyDays(1);  // Réinitialise l'autonomie à 1 jour
   };
 
   return (
@@ -360,7 +362,7 @@ const styles = StyleSheet.create({
     color: "black"
   },
   valueText: {
-     color: "green"
+    color: "green"
   },
   icon: {
     width: 140,
