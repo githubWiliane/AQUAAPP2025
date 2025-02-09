@@ -17,7 +17,6 @@ import { addHistoryRecord } from "../HistoryService/HistoryService"; // Adaptez 
 
 // Options pour les panneaux solaires
 const panelOptions = [
-
   { id: "A", label: "Monocristallin  - 30W / 12Vcc", power: 30, panelVoltage: 12, usageVoltage: 12 },
   { id: "B", label: "Monocristallin  - 50W / 12Vcc", power: 50, panelVoltage: 12, usageVoltage: 12 },
   { id: "C", label: "Monocristallin  - 100W / 12Vcc", power: 100, panelVoltage: 12, usageVoltage: 12 },
@@ -35,8 +34,6 @@ const batteryOptions = [
   { id: "Type5", label: "AGM  - 200Ah / 12Vcc", capacity: 200, voltage: 12 },
   { id: "Type6", label: "Lithium  - 100Ah / 48VVcc", capacity: 100, voltage: 48 },
   { id: "Type7", label: "Lithium  - 200Ah / 48VVcc", capacity: 200, voltage: 48 },
-   
-
 ];
 
 const SolarEnergyCalculator = () => {
@@ -49,7 +46,9 @@ const SolarEnergyCalculator = () => {
   const [quantity, setQuantity] = useState("");
   const [hours, setHours] = useState("");
   const [sunFactor, setSunFactor] = useState("5"); // Facteur régional d'ensoleillement
-  const [autonomyDays, setAutonomyDays] = useState("3"); // (non utilisé dans les calculs actuels)
+
+  // Par défaut, le système est dimensionné pour 1 jour d'autonomie
+  const [autonomyDays, setAutonomyDays] = useState(1);
 
   // Sélecteur de panneau solaire
   const [selectedPanel, setSelectedPanel] = useState(panelOptions[0]);
@@ -77,50 +76,62 @@ const SolarEnergyCalculator = () => {
     }
   };
 
-  // Calcul de la demande en énergie des appareils (en Wh)
+  // Calcul de la demande en énergie des appareils (en Wh) sur une journée
   const totalEnergy = devices.reduce(
     (sum, device) => sum + device.power * device.quantity * device.hours,
     0
   );
-  // On ajoute 30% de pertes système
+
+  // Calcul de la demande journalière avec pertes (30%) – utilisé pour les panneaux
   const totalEnergyWithLosses = totalEnergy * 1.3;
 
-  // Calcul de la production journalière par panneau en Wh
-   const dailyEnergyPerPanel = selectedPanel.power * parseFloat(sunFactor);
+  // Calcul de la consommation totale sur l'autonomie choisie
+  const totalEnergyForAutonomy = totalEnergy * autonomyDays;
+  const totalEnergyWithLossesForAutonomy = totalEnergyForAutonomy * 1.3;
+
+  // Calcul de la production journalière par panneau (en Wh)
+  const dailyEnergyPerPanel = selectedPanel.power * parseFloat(sunFactor);
   const numPanels = Math.ceil(totalEnergyWithLosses / dailyEnergyPerPanel);
 
-  // Calcul de la capacité totale de batterie requise en Ah
- //const batteryCapacityTotal = totalEnergyWithLosses / parseFloat(selectedBattery.voltage);
-const batteryCapacityTotal = totalEnergy / parseFloat(selectedBattery.voltage);
+  // Calcul de la capacité totale de batterie requise en Ah sur l'autonomie choisie
+  const batteryCapacityTotal = (totalEnergyForAutonomy) / selectedBattery.voltage;
   const numBatteries = Math.ceil(batteryCapacityTotal / selectedBattery.capacity);
 
   // Calcul de la capacité du régulateur (ampères)
-  // Si aucun appareil n'est ajouté, le total d'énergie est nul et on affichera 0
   const regulatorCurrent =
     totalEnergyWithLosses > 0
       ? Math.ceil((selectedPanel.power * numPanels) / selectedBattery.voltage)
       : 0;
-  // Construction du libellé du régulateur
   const recommendedRegulator =
     totalEnergyWithLosses > 0
       ? `régulateur de ${selectedBattery.voltage}Vcc - ${regulatorCurrent}A`
       : "0";
 
-  // Pour l'affichage, si aucun appareil n'est ajouté, on force l'affichage de "0"
-  const displayedEnergy = totalEnergyWithLosses > 0 ? totalEnergyWithLosses.toFixed(2) + " Wh" : "0";
-  const displayedNumBatteries = totalEnergyWithLosses > 0 ? `${numBatteries} (${selectedBattery.capacity}Ah/${selectedBattery.voltage}Vcc)` : "0";
-  const displayedNumPanels = totalEnergyWithLosses > 0 ? `${numPanels} (${selectedPanel.power}W/${selectedPanel.panelVoltage}V/${selectedPanel.usageVoltage}V)` : "0";
+  // Formatage pour l'affichage des résultats
+  const displayedDailyEnergy =
+    totalEnergyWithLosses > 0 ? totalEnergyWithLosses.toFixed(2) + " Wh" : "0";
+  const displayedAutonomyEnergy =
+    totalEnergyWithLossesForAutonomy > 0 ? totalEnergyWithLossesForAutonomy.toFixed(2) + " Wh" : "0";
+  const displayedNumBatteries =
+    totalEnergyWithLosses > 0
+      ? `${numBatteries} (${selectedBattery.capacity}Ah/${selectedBattery.voltage}Vcc)`
+      : "0";
+  const displayedNumPanels =
+    totalEnergyWithLosses > 0
+      ? `${numPanels} (${selectedPanel.power}W/${selectedPanel.panelVoltage}V/${selectedPanel.usageVoltage}V)`
+      : "0";
 
   // Fonction appelée lors du clic sur refresh pour enregistrer l'historique et réinitialiser les champs
   const resetAll = () => {
-    // Création d'un résumé des appareils ajoutés (nom et puissance)
-    const devicesSummary = devices.map(device => `${device.name} (${device.power}W)`).join(", ");
+    const devicesSummary = devices
+      .map((device) => `${device.name} (${device.power}W)`)
+      .join(", ");
 
     const record = {
       id: Date.now().toString(),
       date: new Date().toLocaleString(),
       description: devicesSummary ? `Appareils: ${devicesSummary}` : "Aucun appareil ajouté",
-      result: totalEnergyWithLosses > 0 ? totalEnergyWithLosses.toFixed(2) + " Wh" : "0",
+      result: totalEnergyWithLossesForAutonomy > 0 ? totalEnergyWithLossesForAutonomy.toFixed(2) + " Wh" : "0",
       details: {
         panels: {
           number: totalEnergyWithLosses > 0 ? numPanels : 0,
@@ -130,7 +141,8 @@ const batteryCapacityTotal = totalEnergy / parseFloat(selectedBattery.voltage);
           number: totalEnergyWithLosses > 0 ? numBatteries : 0,
           info: `${selectedBattery.capacity}Ah / ${selectedBattery.voltage}Vcc`
         },
-        regulator: recommendedRegulator
+        regulator: recommendedRegulator,
+        autonomyDays
       }
     };
     addHistoryRecord(record);
@@ -198,9 +210,6 @@ const batteryCapacityTotal = totalEnergy / parseFloat(selectedBattery.voltage);
         </TouchableOpacity>
       </View>
 
-      {/* Espace sous le bouton */}
-      <View style={styles.spaceBelowButton} />
-
       {/* Liste des appareils ajoutés */}
       <FlatList
         data={devices}
@@ -247,22 +256,42 @@ const batteryCapacityTotal = totalEnergy / parseFloat(selectedBattery.voltage);
         </Picker>
       </View>
 
+      {/* Contrôle pour l'autonomie en jours avec des boutons Prev et Next */}
+      <View style={styles.autonomyContainer}>
+        <Text style={styles.label}>Autonomie en jours :</Text>
+        <View style={styles.autonomyControl}>
+          <TouchableOpacity
+            onPress={() => setAutonomyDays(Math.max(1, autonomyDays - 1))}
+            style={styles.autonomyButton}
+          >
+            <Text style={styles.buttonText}>Prev</Text>
+          </TouchableOpacity>
+          <Text style={styles.autonomyValue}>{autonomyDays}</Text>
+          <TouchableOpacity
+            onPress={() => setAutonomyDays(autonomyDays + 1)}
+            style={styles.autonomyButton}
+          >
+            <Text style={styles.buttonText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Affichage des résultats */}
       <View style={styles.resultsContainer}>
         <Text style={styles.result}>
-          <Text style={styles.labelText}>Besoins quotidiens en énergie: </Text>
-          <Text style={styles.valueText}>{displayedEnergy}</Text>
+          <Text style={styles.labelText}>Besoins quotidiens en énergie : </Text>
+          <Text style={styles.valueText}>{displayedDailyEnergy}</Text>
         </Text>
         <Text style={styles.result}>
-          <Text style={styles.labelText}>
-            Nombre de batteries:{" "}
-          </Text>
+          <Text style={styles.labelText}>Besoins totaux sur {autonomyDays} jours: </Text>
+          <Text style={styles.valueText}>{displayedAutonomyEnergy}</Text>
+        </Text>
+        <Text style={styles.result}>
+          <Text style={styles.labelText}>Nombre de batteries: </Text>
           <Text style={styles.valueText}>{displayedNumBatteries}</Text>
         </Text>
         <Text style={styles.result}>
-          <Text style={styles.labelText}>
-            Nombre de panneaux solaires:{" "}
-          </Text>
+          <Text style={styles.labelText}>Nombre de panneaux solaires: </Text>
           <Text style={styles.valueText}>{displayedNumPanels}</Text>
         </Text>
         <Text style={styles.result}>
@@ -301,9 +330,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     width: "80%"
   },
-  spaceBelowButton: {
-    height: 20
-  },
   pickerContainer: {
     width: "80%",
     backgroundColor: "#37474F",
@@ -334,7 +360,7 @@ const styles = StyleSheet.create({
     color: "black"
   },
   valueText: {
-    color: "skyblue"
+     color: "green"
   },
   icon: {
     width: 140,
@@ -364,6 +390,29 @@ const styles = StyleSheet.create({
   },
   historyIcon: {
     padding: 10
+  },
+  autonomyContainer: {
+    alignItems: "center",
+    marginTop: 15
+  },
+  autonomyControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5
+  },
+  autonomyButton: {
+    padding: 10,
+    backgroundColor: "#4CAF50",
+    borderRadius: 5
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16
+  },
+  autonomyValue: {
+    marginHorizontal: 20,
+    fontSize: 18,
+    fontWeight: "bold"
   }
 });
 
