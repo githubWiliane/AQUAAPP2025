@@ -103,12 +103,24 @@ export default function AlimentationScreen({ navigation }) {
     setIsDarkTheme(!isDarkTheme);
   };
 
-  // Calcul de l'alimentation
+  // Calcul de l'alimentation en grammes
+  // Si un résultat est déjà affiché, un nouveau clic l'efface.
   const calculerAlimentation = () => {
+    if (resultat) {
+      setResultat('');
+      return;
+    }
     if (nombrePoissons && poidsTotal) {
-      const quantiteAlimentation =
-        (parseFloat(poidsTotal) / parseInt(nombrePoissons)) * 0.03;
-      setResultat(`Quantité d'alimentation: ${quantiteAlimentation.toFixed(2)} kg`);
+      const nbPoissons = Number(nombrePoissons);
+      const poids = Number(poidsTotal);
+
+      if (!isNaN(nbPoissons) && nbPoissons > 0 && !isNaN(poids) && poids > 0) {
+        // Calcul basé sur 10% du poids total exprimé en grammes
+        const quantiteAlimentation = poids * 0.10; 
+        setResultat(`Quantité d'alimentation: ${quantiteAlimentation.toFixed(2)} g`);
+      } else {
+        setResultat('Veuillez saisir des valeurs valides.');
+      }
     } else {
       setResultat('Veuillez saisir les deux valeurs.');
     }
@@ -121,10 +133,9 @@ export default function AlimentationScreen({ navigation }) {
     return `${heures}:${minutes}`;
   };
 
-  // --- AJOUT : Fonction pour activer le moteur via l'ESP32 ---
+  // --- Fonction pour activer le moteur via l'ESP32 ---
   const activerMoteur = async () => {
     try {
-      // Envoi d'une requête POST vers l'URL /activateMotor
       const response = await fetch(`http://${ESP32_IP}/activateMotor`, {
         method: 'POST',
       });
@@ -135,26 +146,26 @@ export default function AlimentationScreen({ navigation }) {
     }
   };
 
-  // --- AJOUT : Vérifier l'heure toutes les 30 secondes ---
+  // --- Vérification périodique de l'heure ---
   useEffect(() => {
+    let lastActivation = ""; // pour éviter les activations multiples dans la même minute
     const interval = setInterval(() => {
       const now = new Date();
       const currentHourMinute = formatHeure(now); // "HH:MM"
-
-      // Vérifier si l'heure actuelle correspond à l'une des heures sélectionnées
-      if (isDistribuer) {
-        if (
-          currentHourMinute === formatHeure(heure1) ||
+      if (
+        isDistribuer &&
+        (currentHourMinute === formatHeure(heure1) ||
           currentHourMinute === formatHeure(heure2) ||
-          currentHourMinute === formatHeure(heure3)
-        ) {
+          currentHourMinute === formatHeure(heure3))
+      ) {
+        if (currentHourMinute !== lastActivation) {
           console.log('Heure correspondante détectée, activation du moteur...');
           activerMoteur();
+          lastActivation = currentHourMinute;
         }
       }
-    }, 30000); // Vérifie toutes les 30s. Ajustez à 1000 ms pour une vérification à la seconde.
+    }, 30000); // Vérifie toutes les 30 secondes
 
-    // Nettoyage à la fin du cycle de vie
     return () => clearInterval(interval);
   }, [heure1, heure2, heure3, isDistribuer]);
 
@@ -209,10 +220,10 @@ export default function AlimentationScreen({ navigation }) {
           onChangeText={setNombrePoissons}
         />
 
-        <Text style={themeStyles.label}>Poids total (kg) :</Text>
+        <Text style={themeStyles.label}>Poids total (g) :</Text>
         <TextInput
           style={[styles.input, themeStyles.input]}
-          placeholder="Entrez poids total de vos poissons"
+          placeholder="Entrez le poids total de vos poissons en grammes"
           keyboardType="numeric"
           value={poidsTotal}
           onChangeText={setPoidsTotal}
@@ -232,10 +243,7 @@ export default function AlimentationScreen({ navigation }) {
           ].map(({ heure, setShow, show, setTime }, index) => (
             <View key={index} style={styles.timeRow}>
               <Text style={themeStyles.labelHeure}>{`Heure ${index + 1} :`}</Text>
-              <TouchableOpacity
-                style={styles.selectButton}
-                onPress={() => setShow(true)}
-              >
+              <TouchableOpacity style={styles.selectButton} onPress={() => setShow(true)}>
                 <Text style={styles.buttonText}>Sélectionner</Text>
               </TouchableOpacity>
               <Text style={themeStyles.selectedTime}>{formatHeure(heure)}</Text>
@@ -356,7 +364,7 @@ const styles = StyleSheet.create({
       marginLeft: 20,
     },
     resultat: {
-      color: '#000',
+      color: 'green',
     },
     input: {
       backgroundColor: '#fff',
@@ -396,7 +404,7 @@ const styles = StyleSheet.create({
       marginLeft: 20,
     },
     resultat: {
-      color: '#f5dd4b',
+      color: '#9acd32',
     },
     input: {
       backgroundColor: '#333',

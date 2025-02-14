@@ -6,8 +6,6 @@
 #include <HX711.h>
 
 // --- Configuration des capteurs ---
-
-// DS18B20
 #define DS18B20_PIN 4         // Broche DATA du DS18B20
 OneWire oneWire(DS18B20_PIN);
 DallasTemperature ds18b20(&oneWire);
@@ -17,18 +15,15 @@ DallasTemperature ds18b20(&oneWire);
 #define DHTTYPE DHT11         // Type de capteur
 DHT dht(DHTPIN, DHTTYPE);
 
- 
-
 // Relais (ex. pour un aérateur)
 #define RELAY_PIN 25          // GPIO pour le relais
 
 // --- Configuration du moteur pas à pas ---
-
-#define IN1 18  // GPIO pour IN1
-#define IN2 19  // GPIO pour IN2
-#define IN3 22  // GPIO pour IN3
-#define IN4 23  // GPIO pour IN4
-int stepDelay = 2;            // Délai entre chaque pas (en ms)
+#define IN1 18  
+#define IN2 19  
+#define IN3 22  
+#define IN4 23  
+int stepDelay = 2; // Délai entre chaque pas en ms
 
 // Séquence de pas du moteur
 const int steps[4][4] = {
@@ -38,14 +33,11 @@ const int steps[4][4] = {
   {1, 0, 0, 1}  // Étape 4
 };
 
-// --- Configuration du point d'accès Wi-Fi et du serveur ---
-const char* ssid = "ESP32_Access_Point"; // Nom du réseau Wi-Fi
-const char* password = "12345678";       // Mot de passe (min. 8 caractères)
+const char* ssid = "AQUA_APP";
+const char* password = "12345678";
 WiFiServer server(80);
 
-// --- Fonctions utilitaires ---
-
-// Active la séquence de pas sur le moteur
+// Fonction pour activer un pas du moteur
 void stepMotor(int step) {
   digitalWrite(IN1, steps[step][0]);
   digitalWrite(IN2, steps[step][1]);
@@ -53,47 +45,40 @@ void stepMotor(int step) {
   digitalWrite(IN4, steps[step][3]);
 }
 
-// Tâche FreeRTOS pour le contrôle du moteur (non bloquante pour le serveur HTTP)
-void motorTask(void * parameter) {
-  for (;;) { // Boucle infinie
-    // Rotation avant : 200 pas
-    for (int i = 0; i < 200; i++) {
-      stepMotor(i % 4);
-      vTaskDelay(stepDelay / portTICK_PERIOD_MS);
-    }
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Pause d'1 seconde
-    // Rotation arrière : 200 pas
-    for (int i = 0; i < 200; i++) {
-      stepMotor(3 - (i % 4));
-      vTaskDelay(stepDelay / portTICK_PERIOD_MS);
-    }
-    vTaskDelay(1000 / portTICK_PERIOD_MS); // Pause d'1 seconde
+// Fonction pour faire tourner le moteur pendant 3 secondes
+void runMotorFor3Sec() {
+  unsigned long startTime = millis();
+  int stepIndex = 0;
+  while (millis() - startTime < 3000) {
+    stepMotor(stepIndex % 4);
+    stepIndex++;
+    delay(stepDelay);
   }
+  // Arrêt du moteur
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
 }
 
 void setup() {
-  // Initialisation des capteurs
   ds18b20.begin();
   dht.begin();
-
-  // Initialisation du moniteur série
   Serial.begin(115200);
   Serial.println("Démarrage de l'ESP32...");
 
-  // Configuration du point d'accès Wi-Fi
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
   Serial.print("Point d'accès configuré. Adresse IP : ");
   Serial.println(IP);
 
-  // Démarrage du serveur Web
   server.begin();
 
   // Initialisation du relais
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW);  // Désactiver le relais au démarrage
 
-  // Initialisation des broches du moteur
+  // Initialisation des broches du moteur pas à pas
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
@@ -102,50 +87,39 @@ void setup() {
   digitalWrite(IN2, LOW);
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, LOW);
-
- 
-
-  // Création de la tâche pour le contrôle du moteur (s'exécute en parallèle)
-  xTaskCreate(
-    motorTask,        // Fonction de la tâche
-    "Motor Task",     // Nom de la tâche
-    2048,             // Taille de la pile (stack)
-    NULL,             // Paramètres (none)
-    1,                // Priorité
-    NULL              // Handle de la tâche
-  );
 }
 
 void loop() {
-  // Vérifier si un client se connecte
   WiFiClient client = server.available();
   if (!client) return;
 
-  // Attendre la requête du client
   while (!client.available()) {
     delay(1);
   }
 
-  // Lire la requête (le contenu n'est pas utilisé ici)
   String request = client.readStringUntil('\r');
   client.flush();
 
-  // --- Lecture rapide des données des capteurs ---
+  // Si la requête contient "/activateMotor", activer le moteur pendant 3 secondes
+  if (request.indexOf("/activateMotor") >= 0) {
+    Serial.println("Activation du moteur demandée via HTTP");
+    runMotorFor3Sec();
+    client.print("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nMoteur activé pour 3 secondes");
+    client.stop();
+    return;
+  }
+
+  // Lecture des données des capteurs
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
-  
   ds18b20.requestTemperatures();
   float tempDS18B20 = ds18b20.getTempCByIndex(0);
   
-  
-
-  // Gestion des erreurs de lecture
   if (isnan(temperature) || isnan(humidity)) {
     temperature = 0.0;
     humidity = 0.0;
   }
-
-  // Affichage des données sur le moniteur série
+  
   Serial.println("=== Données des capteurs ===");
   Serial.print("Température DHT11 : ");
   Serial.print(temperature);
@@ -159,8 +133,6 @@ void loop() {
   Serial.print(tempDS18B20);
   Serial.println(" °C");
   
-  
-
   // Activation du relais si la température DS18B20 > 35°C
   if (tempDS18B20 > 35) {
     digitalWrite(RELAY_PIN, HIGH);
@@ -169,16 +141,15 @@ void loop() {
   }
   bool aeratorState = digitalRead(RELAY_PIN);
 
-  // --- Construction et envoi de la réponse JSON ---
+  // Construction et envoi de la réponse JSON
   String json = "{";
   json += "\"temperature\": " + String(temperature) + ",";
   json += "\"humidity\": " + String(humidity) + ",";
   json += "\"tempDS18B20\": " + String(tempDS18B20) + ",";
-   
   json += "\"aeratorState\": " + String(aeratorState ? "true" : "false");
   json += "}";
-
+  
   client.print("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
   client.print(json);
-  client.stop();  // Fermer proprement la connexion
+  client.stop();
 }

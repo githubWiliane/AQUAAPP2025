@@ -64,7 +64,7 @@ export default function TableauDebord({ navigation }) {
       setLoading(false);
       setConnected(true);
     } catch (err) {
-      setError("Impossible de récupérer les données.");
+      setError(" ");
       setLoading(false);
       setConnected(false);
       showNotification("Erreur", "Impossible de récupérer les données.");
