@@ -12,30 +12,31 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
-
 import { KeyboardAvoidingView, Platform } from 'react-native';
 
 export default function AlimentationScreen({ navigation }) {
-  const [nombrePoissons, setNombrePoissons] = useState('');
-  const [poidsTotal, setPoidsTotal] = useState('');
-  const [resultat, setResultat] = useState('');
-
+  // États pour les heures
   const [heure1, setHeure1] = useState(new Date());
   const [heure2, setHeure2] = useState(new Date());
   const [heure3, setHeure3] = useState(new Date());
 
+  // États pour afficher ou non le DateTimePicker
   const [showPicker1, setShowPicker1] = useState(false);
   const [showPicker2, setShowPicker2] = useState(false);
   const [showPicker3, setShowPicker3] = useState(false);
 
+  // Autres états
+  const [nombrePoissons, setNombrePoissons] = useState('');
+  const [poidsTotal, setPoidsTotal] = useState('');
+  const [resultat, setResultat] = useState('');
   const [isDarkTheme, setIsDarkTheme] = useState(false);
-  const [isDistribuer, setIsDistribuer] = useState(false); // État pour le switch "Distribuer"
-
+  const [isDistribuer, setIsDistribuer] = useState(false);
   const [typeAliment, setTypeAliment] = useState('Poudre');
 
- 
+  // Adresse (ou IP) de l'ESP32 à adapter
+  const ESP32_IP = '192.168.4.1';
 
-  // Charger l'état sauvegardé du switch "Distribuer" lors du montage du composant
+  // Charger l'état sauvegardé du switch "Distribuer"
   useEffect(() => {
     const loadDistribuerState = async () => {
       try {
@@ -50,7 +51,30 @@ export default function AlimentationScreen({ navigation }) {
     loadDistribuerState();
   }, []);
 
-  // Sauvegarder l'état du switch à chaque modification
+  // Charger les heures sauvegardées au montage du composant
+  useEffect(() => {
+    const loadHeures = async () => {
+      try {
+        const storedHeure1 = await AsyncStorage.getItem('@heure1');
+        const storedHeure2 = await AsyncStorage.getItem('@heure2');
+        const storedHeure3 = await AsyncStorage.getItem('@heure3');
+        if (storedHeure1 !== null) {
+          setHeure1(new Date(parseInt(storedHeure1)));
+        }
+        if (storedHeure2 !== null) {
+          setHeure2(new Date(parseInt(storedHeure2)));
+        }
+        if (storedHeure3 !== null) {
+          setHeure3(new Date(parseInt(storedHeure3)));
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des heures sauvegardées:", error);
+      }
+    };
+    loadHeures();
+  }, []);
+
+  // Sauvegarder l'état du switch "Distribuer"
   const onToggleDistribuer = async (newValue) => {
     setIsDistribuer(newValue);
     try {
@@ -60,10 +84,26 @@ export default function AlimentationScreen({ navigation }) {
     }
   };
 
+  // Sauvegarder automatiquement les heures à chaque modification
+  useEffect(() => {
+    const saveHeures = async () => {
+      try {
+        await AsyncStorage.setItem('@heure1', heure1.getTime().toString());
+        await AsyncStorage.setItem('@heure2', heure2.getTime().toString());
+        await AsyncStorage.setItem('@heure3', heure3.getTime().toString());
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde des heures:", error);
+      }
+    };
+    saveHeures();
+  }, [heure1, heure2, heure3]);
+
+  // Basculer entre thème clair/sombre
   const toggleTheme = () => {
     setIsDarkTheme(!isDarkTheme);
   };
 
+  // Calcul de l'alimentation
   const calculerAlimentation = () => {
     if (nombrePoissons && poidsTotal) {
       const quantiteAlimentation =
@@ -74,131 +114,160 @@ export default function AlimentationScreen({ navigation }) {
     }
   };
 
+  // Formatage de l'heure en HH:MM
   const formatHeure = (date) => {
     const heures = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${heures}:${minutes}`;
   };
 
+  // --- AJOUT : Fonction pour activer le moteur via l'ESP32 ---
+  const activerMoteur = async () => {
+    try {
+      // Envoi d'une requête POST vers l'URL /activateMotor
+      const response = await fetch(`http://${ESP32_IP}/activateMotor`, {
+        method: 'POST',
+      });
+      const result = await response.text();
+      console.log('Réponse du serveur ESP32:', result);
+    } catch (error) {
+      console.error("Erreur lors de l'activation du moteur:", error);
+    }
+  };
+
+  // --- AJOUT : Vérifier l'heure toutes les 30 secondes ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const currentHourMinute = formatHeure(now); // "HH:MM"
+
+      // Vérifier si l'heure actuelle correspond à l'une des heures sélectionnées
+      if (isDistribuer) {
+        if (
+          currentHourMinute === formatHeure(heure1) ||
+          currentHourMinute === formatHeure(heure2) ||
+          currentHourMinute === formatHeure(heure3)
+        ) {
+          console.log('Heure correspondante détectée, activation du moteur...');
+          activerMoteur();
+        }
+      }
+    }, 30000); // Vérifie toutes les 30s. Ajustez à 1000 ms pour une vérification à la seconde.
+
+    // Nettoyage à la fin du cycle de vie
+    return () => clearInterval(interval);
+  }, [heure1, heure2, heure3, isDistribuer]);
+
   const themeStyles = isDarkTheme ? styles.dark : styles.light;
 
   return (
     <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    style={{ flex: 1 }}
-  >
-
-    <View style={[styles.container, themeStyles.container]}>
-      <TouchableOpacity style={styles.themeIconContainer} onPress={toggleTheme}>
-        <Icon
-          name={isDarkTheme ? 'sunny' : 'moon'}
-          size={30}
-          color={isDarkTheme ? '#fff' : '#000'}
-        />
-      </TouchableOpacity>
-
-
-
-      <Image
-        source={require('../AlimentationScreen/ALIMENTATION.png')}
-        style={[styles.icon, { tintColor: isDarkTheme ? 'white' : 'black' }]}
-        resizeMode="contain"
-      />
-
-<KeyboardAvoidingView 
-  behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-  style={{ flex: 1, bottom:20, }}
->
-   
-  <Picker
-    selectedValue={typeAliment}
-    onValueChange={(itemValue) => setTypeAliment(itemValue)}
-    style={styles.picker}
-  >
-    <Picker.Item label="Poudre" value="Poudre" />
-    <Picker.Item label="Granuler" value="Granuler" />
-  </Picker>
-  <Text style={[styles.selectedAliment, { color: isDarkTheme ? 'white' : 'black' }]}>
-  Type d'aliment sélectionné :{' '}
-  <Text style={{ color: isDarkTheme ? '#9acd32' : 'green', fontWeight: 'bold' }}>
-    {typeAliment}
-  </Text>
-</Text>
-
-</KeyboardAvoidingView>
-
-
-
-      <Text style={themeStyles.label}>Nombre total :</Text>
-      <TextInput
-        style={[styles.input, themeStyles.input]}
-        placeholder="Entrez nombre total des poissons"
-        keyboardType="numeric"
-        value={nombrePoissons}
-        onChangeText={setNombrePoissons}
-      />
-
-      <Text style={themeStyles.label}>Poids total (kg) :</Text>
-      <TextInput
-        style={[styles.input, themeStyles.input]}
-        placeholder="Entrez poids total de vos poissons"
-        keyboardType="numeric"
-        value={poidsTotal}
-        onChangeText={setPoidsTotal}
-      />
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.calculateButton} onPress={calculerAlimentation}>
-          <Text style={styles.buttonText}>CALCULER</Text>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <View style={[styles.container, themeStyles.container]}>
+        <TouchableOpacity style={styles.themeIconContainer} onPress={toggleTheme}>
+          <Icon
+            name={isDarkTheme ? 'sunny' : 'moon'}
+            size={30}
+            color={isDarkTheme ? '#fff' : '#000'}
+          />
         </TouchableOpacity>
-      </View>
 
-      <View style={styles.timeContainer}>
-        {[
-          { heure: heure1, setShow: setShowPicker1, show: showPicker1, setTime: setHeure1 },
-          { heure: heure2, setShow: setShowPicker2, show: showPicker2, setTime: setHeure2 },
-          { heure: heure3, setShow: setShowPicker3, show: showPicker3, setTime: setHeure3 },
-        ].map(({ heure, setShow, show, setTime }, index) => (
-          <View key={index} style={styles.timeRow}>
-            <Text style={themeStyles.labelHeure}>{`Heure ${index + 1} :`}</Text>
-            <TouchableOpacity
-              style={styles.selectButton}
-              onPress={() => setShow(true)}
-            >
-              <Text style={styles.buttonText}>Sélectionner</Text>
-            </TouchableOpacity>
-            <Text style={themeStyles.selectedTime}>{formatHeure(heure)}</Text>
-            {show && (
-              <DateTimePicker
-                value={heure}
-                mode="time"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShow(false);
-                  if (selectedDate) {
-                    setTime(selectedDate);
-                  }
-                }}
-              />
-            )}
-          </View>
-        ))}
-      </View>
-
-      {resultat ? <Text style={themeStyles.resultat}>{resultat}</Text> : null}
-
-      {/* Bouton switch "Distribuer" en bas, centré */}
-      <View style={styles.distribuerContainer}>
-        <Text style={themeStyles.label}>Distribuer</Text>
-        <Switch
-          value={isDistribuer}
-          onValueChange={onToggleDistribuer}
-          thumbColor={isDistribuer ? "#007bff" : "#f4f3f4"}
-          trackColor={{ false: "#767577", true: "#81b0ff" }}
+        <Image
+          source={require('../AlimentationScreen/ALIMENTATION.png')}
+          style={[styles.icon, { tintColor: isDarkTheme ? 'white' : 'black' }]}
+          resizeMode="contain"
         />
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, bottom: 20 }}
+        >
+          <Picker
+            selectedValue={typeAliment}
+            onValueChange={(itemValue) => setTypeAliment(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Poudre" value="Poudre" />
+            <Picker.Item label="Granuler" value="Granuler" />
+          </Picker>
+          <Text style={[styles.selectedAliment, { color: isDarkTheme ? 'white' : 'black' }]}>
+            Type d'aliment sélectionné :{' '}
+            <Text style={{ color: isDarkTheme ? '#9acd32' : 'green', fontWeight: 'bold' }}>
+              {typeAliment}
+            </Text>
+          </Text>
+        </KeyboardAvoidingView>
+
+        <Text style={themeStyles.label}>Nombre total :</Text>
+        <TextInput
+          style={[styles.input, themeStyles.input]}
+          placeholder="Entrez nombre total des poissons"
+          keyboardType="numeric"
+          value={nombrePoissons}
+          onChangeText={setNombrePoissons}
+        />
+
+        <Text style={themeStyles.label}>Poids total (kg) :</Text>
+        <TextInput
+          style={[styles.input, themeStyles.input]}
+          placeholder="Entrez poids total de vos poissons"
+          keyboardType="numeric"
+          value={poidsTotal}
+          onChangeText={setPoidsTotal}
+        />
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.calculateButton} onPress={calculerAlimentation}>
+            <Text style={styles.buttonText}>CALCULER</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.timeContainer}>
+          {[
+            { heure: heure1, setShow: setShowPicker1, show: showPicker1, setTime: setHeure1 },
+            { heure: heure2, setShow: setShowPicker2, show: showPicker2, setTime: setHeure2 },
+            { heure: heure3, setShow: setShowPicker3, show: showPicker3, setTime: setHeure3 },
+          ].map(({ heure, setShow, show, setTime }, index) => (
+            <View key={index} style={styles.timeRow}>
+              <Text style={themeStyles.labelHeure}>{`Heure ${index + 1} :`}</Text>
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={() => setShow(true)}
+              >
+                <Text style={styles.buttonText}>Sélectionner</Text>
+              </TouchableOpacity>
+              <Text style={themeStyles.selectedTime}>{formatHeure(heure)}</Text>
+              {show && (
+                <DateTimePicker
+                  value={heure}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShow(false);
+                    if (selectedDate) {
+                      setTime(selectedDate);
+                    }
+                  }}
+                />
+              )}
+            </View>
+          ))}
+        </View>
+
+        {resultat ? <Text style={themeStyles.resultat}>{resultat}</Text> : null}
+
+        <View style={styles.distribuerContainer}>
+          <Text style={themeStyles.label}>Distribuer</Text>
+          <Switch
+            value={isDistribuer}
+            onValueChange={onToggleDistribuer}
+            thumbColor={isDistribuer ? '#007bff' : '#f4f3f4'}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+          />
+        </View>
       </View>
-    </View>
-    
     </KeyboardAvoidingView>
   );
 }
@@ -218,10 +287,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     top: 10,
-  width: 100, // Réduire la largeur
-  height: 150, // Réduire la hauteur
-  marginBottom: 10,
-     
+    width: 100,
+    height: 150,
+    marginBottom: 10,
   },
   input: {
     height: 50,
@@ -295,35 +363,22 @@ const styles = StyleSheet.create({
       color: '#000',
       borderColor: '#ccc',
     },
-    TypeAliment:{
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingBottom: 50,
-    },
     picker: {
       height: 50,
       width: '85%',
       marginBottom: 15,
-      color: '#000', // Vous pouvez définir la couleur du texte si nécessaire
-      backgroundColor: '#f0f0f0', // Couleur de fond souhaitée
-      borderRadius: 10, // Facultatif, pour arrondir les coins
-      borderWidth: 1, // Facultatif, pour une bordure
-      borderColor: '#ccc', // Facultatif, pour la couleur de la bordure
-      
+      color: '#000',
+      backgroundColor: '#f0f0f0',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#ccc',
     },
-
     selectedAliment: {
       fontSize: 16,
-      color: '#007bff', // Vous pouvez changer la couleur si nécessaire
+      color: '#007bff',
       marginTop: 10,
-    }
-    
-
+    },
   },
-
-
-
   dark: {
     container: {
       backgroundColor: '#121212',
@@ -348,21 +403,15 @@ const styles = StyleSheet.create({
       color: '#fff',
       borderColor: '#fff',
     },
-    TypeAliment:{
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingBottom: 50,
-    },
     picker: {
       height: 50,
       width: '85%',
       marginBottom: 15,
-      color: '#000', // Vous pouvez définir la couleur du texte si nécessaire
-      backgroundColor: '#f0f0f0', // Couleur de fond souhaitée
-      borderRadius: 10, // Facultatif, pour arrondir les coins
-      borderWidth: 1, // Facultatif, pour une bordure
-      borderColor: '#ccc', // Facultatif, pour la couleur de la bordure
+      color: '#000',
+      backgroundColor: '#f0f0f0',
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: '#ccc',
     },
   },
 });
