@@ -15,6 +15,7 @@ import Chapitre5Screen from './app/(tabs)/COMPOSANTES/Chapitre5/Chapitre5Screen.
 import Chapitre6Screen from './app/(tabs)/COMPOSANTES/Chapitre6/Chapitre6Screen.js';
 import SolarEnergyCalculator from './app/(tabs)/COMPOSANTES/solar/Solar.js';
 import HistoryScreen from './app/(tabs)/COMPOSANTES/Story/Story.js';
+import HistoricalDataScreen from'.//app/(tabs)/COMPOSANTES/HistoricalDataScreen/HistoricalDataScreen.js'
 
 const Stack = createStackNavigator();
 
@@ -62,6 +63,9 @@ export default function App() {
       <Stack.Screen name="SolarEnergyCalculator"  options={{ title: '' }} component={SolarEnergyCalculator} />
 
       <Stack.Screen name="HistoryScreen"  options={{ title: '' }} component={HistoryScreen} />
+
+      
+      <Stack.Screen name="HistoricalDataScreen"  options={{ title: '' }} component={HistoricalDataScreen} />
 
       </Stack.Navigator>
     </NavigationContainer> 

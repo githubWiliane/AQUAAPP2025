@@ -164,7 +164,7 @@ export default function AlimentationScreen({ navigation }) {
           lastActivation = currentHourMinute;
         }
       }
-    }, 30000); // Vérifie toutes les 30 secondes
+    }, 60000); // Vérifie toutes les 30 secondes
 
     return () => clearInterval(interval);
   }, [heure1, heure2, heure3, isDistribuer]);

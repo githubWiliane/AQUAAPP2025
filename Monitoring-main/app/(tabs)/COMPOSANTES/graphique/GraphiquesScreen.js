@@ -1,40 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function GraphiquesScreen() {
-  const generateRandomData = () => ({
-    temperature: Array.from({ length: 10 }, () => Math.floor(Math.random() * (34 - 30 + 1)) + 30),
-    humidity: Array.from({ length: 10 }, () => Math.floor(Math.random() * (64 - 60 + 1)) + 60),
-    tempDS18B20: Array.from({ length: 10 }, () => Math.floor(Math.random() * (33 - 30 + 1)) + 30),
-  });
+export default function GraphiquesScreen({ navigation }) {
+  const ESP32_IP = "http://192.168.4.1";
+  const [temperatureHistory, setTemperatureHistory] = useState([]);
+  const [humidityHistory, setHumidityHistory] = useState([]);
+  const [tempDS18B20History, setTempDS18B20History] = useState([]);
 
-  const [data, setData] = useState(generateRandomData());
+  const updateHistory = (history, newValue) => {
+    const updated = [...history, newValue];
+    return updated.length > 10 ? updated.slice(updated.length - 10) : updated;
+  };
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(ESP32_IP);
+      const sensorData = response.data;
+      setTemperatureHistory(prev => updateHistory(prev, sensorData.temperature));
+      setHumidityHistory(prev => updateHistory(prev, sensorData.humidity));
+      setTempDS18B20History(prev => updateHistory(prev, sensorData.tempDS18B20));
+    } catch (error) {
+      console.error("Erreur lors de la récupération des données :", error);
+    }
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setData(generateRandomData());
-    }, 2000);
-
+    fetchData();
+    const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, []);
 
+  if (!temperatureHistory.length || !humidityHistory.length || !tempDS18B20History.length) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Chargement des données...</Text>
+      </View>
+    );
+  }
+
   const chartData = {
-    labels: Array.from({ length: 10 }, (_, i) => `${i + 1}`), // X-axis labels
+    labels: Array.from({ length: 10 }, (_, i) => `${i + 1}`),
     datasets: [
       {
-        data: data.temperature,
-        color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`, // Rouge pour la température
+        data: temperatureHistory,
+        color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
         strokeWidth: 2,
       },
       {
-        data: data.humidity,
-        color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`, // Bleu pour l'humidité
+        data: humidityHistory,
+        color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
         strokeWidth: 2,
       },
       {
-        data: data.tempDS18B20,
-        color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`, // Jaune pour la tempDS18B20
+        data: tempDS18B20History,
+        color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
         strokeWidth: 2,
       },
     ]
@@ -43,7 +65,6 @@ export default function GraphiquesScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Évolution des données</Text>
-
       <LineChart
         data={chartData}
         width={Dimensions.get('window').width - 40}
@@ -59,19 +80,19 @@ export default function GraphiquesScreen() {
           style: {
             borderRadius: 16,
           },
-          propsForDots: {
-            r: '4',
-            strokeWidth: '1',
-            stroke: '#000',
-          },
         }}
       />
-
       <View style={styles.legendContainer}>
-        <Text style={[styles.legend, { color: 'red' }]}>● Température</Text>
-        <Text style={[styles.legend, { color: 'blue' }]}>● Humidité</Text>
-        <Text style={[styles.legend, { color: 'orange' }]}>● Température DS18B20</Text>
+        <Text style={[styles.legend, { color: 'red' }]}>Température</Text>
+        <Text style={[styles.legend, { color: 'blue' }]}>Humidité</Text>
+        <Text style={[styles.legend, { color: 'orange' }]}>Temp DS18B20</Text>
       </View>
+      <TouchableOpacity 
+        style={styles.historicButton} 
+        onPress={() => navigation.navigate('HistoricalDataScreen')}
+      >
+        <Text style={styles.historicButtonText}>Voir l'historique</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -98,5 +119,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  historicButton: {
+    marginTop: 20,
+    backgroundColor: '#007bff',
+    padding: 10,
+    borderRadius: 5,
+    alignSelf: 'center',
+  },
+  historicButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });
-
