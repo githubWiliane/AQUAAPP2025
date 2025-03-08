@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function GraphiquesScreen({ navigation }) {
   const ESP32_IP = "http://192.168.4.1";
@@ -46,18 +45,21 @@ export default function GraphiquesScreen({ navigation }) {
     datasets: [
       {
         data: temperatureHistory,
-        color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`,
-        strokeWidth: 2,
+        color: () => 'rgba(255, 99, 132, 1)', // Couleur rouge, opacité 100%
+        strokeWidth: 3,
+        withDots: false,
       },
       {
         data: humidityHistory,
-        color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`,
-        strokeWidth: 2,
+        color: () => 'rgba(54, 162, 235, 1)', // Couleur bleue, opacité 100%
+        strokeWidth: 3,
+        withDots: false,
       },
       {
         data: tempDS18B20History,
-        color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`,
-        strokeWidth: 2,
+        color: () => 'rgba(255, 206, 86, 1)', // Couleur jaune, opacité 100%
+        strokeWidth: 3,
+        withDots: false,
       },
     ]
   };
@@ -71,21 +73,26 @@ export default function GraphiquesScreen({ navigation }) {
         height={250}
         yAxisLabel=""
         chartConfig={{
-          backgroundColor: '#F5F5F5',
-          backgroundGradientFrom: '#F5F5F5',
-          backgroundGradientTo: '#F5F5F5',
+          backgroundColor: '#FFF',
+          backgroundGradientFrom: '#FFF',
+          backgroundGradientTo: '#FFF',
           decimalPlaces: 0,
           color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
           labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+          fillShadowGradient: 'transparent',      // Pas de remplissage sous les courbes
+          fillShadowGradientOpacity: 0,           // Opacité à 0 pour le remplissage
           style: {
             borderRadius: 16,
           },
         }}
+        style={{
+          backgroundColor: '#FFF',
+        }}
       />
       <View style={styles.legendContainer}>
-        <Text style={[styles.legend, { color: 'red' }]}>Température</Text>
-        <Text style={[styles.legend, { color: 'blue' }]}>Humidité</Text>
-        <Text style={[styles.legend, { color: 'orange' }]}>Temp DS18B20</Text>
+        <Text style={[styles.legend, { color: 'red' }]}>Température(Air)</Text>
+        <Text style={[styles.legend, { color: 'blue' }]}>Humidité(Air)</Text>
+        <Text style={[styles.legend, { color: 'orange' }]}>Température(Eau)</Text>
       </View>
       <TouchableOpacity 
         style={styles.historicButton} 
@@ -100,7 +107,7 @@ export default function GraphiquesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFF', // Fond blanc
     padding: 20,
   },
   header: {

@@ -48,7 +48,6 @@ export default function HistoricalDataScreen({ navigation }) {
   };
 
   // Préparation des données pour le graphique
-  // On utilise l'heure et les minutes pour les labels
   const labels = filteredData.map(item => {
     const d = new Date(item.timestamp);
     const h = d.getHours();
@@ -65,18 +64,24 @@ export default function HistoricalDataScreen({ navigation }) {
     datasets: [
       {
         data: temperatureData,
-        color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`, // Couleur rouge pour la température
-        strokeWidth: 2,
+        // Couleur rouge, opacité 100%
+        color: () => 'rgba(255, 99, 132, 1)',
+        strokeWidth: 3,
+        withDots: false,
       },
       {
         data: humidityData,
-        color: (opacity = 1) => `rgba(54, 162, 235, ${opacity})`, // Bleu pour l'humidité
-        strokeWidth: 2,
+        // Couleur bleue, opacité 100%
+        color: () => 'rgba(54, 162, 235, 1)',
+        strokeWidth: 3,
+        withDots: false,
       },
       {
         data: tempDS18B20Data,
-        color: (opacity = 1) => `rgba(255, 206, 86, ${opacity})`, // Jaune pour la température de l'eau
-        strokeWidth: 2,
+        // Couleur jaune, opacité 100%
+        color: () => 'rgba(255, 206, 86, 1)',
+        strokeWidth: 3,
+        withDots: false,
       },
     ]
   };
@@ -152,10 +157,11 @@ export default function HistoricalDataScreen({ navigation }) {
             decimalPlaces: 1,
             color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+            fillShadowGradient: 'transparent',
+            fillShadowGradientOpacity: 0,
             style: {
               borderRadius: 16,
             },
-            
           }}
           bezier
           style={{
@@ -175,7 +181,7 @@ export default function HistoricalDataScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', // Fond blanc
     padding: 20,
   },
   header: {
